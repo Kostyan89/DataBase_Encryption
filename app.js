@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
   googleId: String,
+  secret: String,
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -64,7 +65,7 @@ passport.use(
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     function (accessToken, refreshToken, profile, cb) {
-      console.log(profile);
+      //   console.log(profile);
 
       User.findOrCreate({ googleId: profile.id }, function (err, user) {
         return cb(err, user);
@@ -99,11 +100,31 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
-app.get("/secrets", (req, res) => {
+app.get("/secrets", async (req, res) => {
+  const foundUsers = await User.find({ secret: { $ne: null } });
+  if (foundUsers) {
+    res.render("secrets", { usersWithSecrets: foundUsers });
+  }
+});
+
+app.get("/submit", (req, res) => {
   if (req.isAuthenticated()) {
-    res.render("secrets");
+    res.render("submit");
   } else {
     res.redirect("/login");
+  }
+});
+
+app.post("/submit", async (req, res) => {
+  const submittedSecret = req.body.secret;
+
+  console.log(req.user.id);
+
+  const foundUser = await User.findById(req.user.id);
+  if (foundUser) {
+    foundUser.secret = submittedSecret;
+    foundUser.save();
+    res.redirect("/secrets");
   }
 });
 
@@ -153,3 +174,4 @@ app.post("/login", async (req, res) => {
 app.listen(3000, function () {
   console.log("Server started on port 3000");
 });
+//TODO signing in with Facebook
